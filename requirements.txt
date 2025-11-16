@@ -1,0 +1,14 @@
+sentence-transformers==2.7.0
+chromadb==0.5.5 
+numpy==1.26.4 
+pandas==2.2.2 
+fastapi==0.110.0 
+uvicorn==0.27.1 
+pydantic==2.6.0 
+python-dotenv
+Langchain
+Langchain-core
+Langchain-community
+pypdf
+pymupdf
+faiss-cpu

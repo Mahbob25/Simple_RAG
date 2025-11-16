@@ -1,0 +1,24 @@
+Machine Learning (ML) is a subset of Artificial Intelligence (AI) that enables computer systems to learn and improve from experience (data) without being explicitly programmed.
+
+Instead of writing a fixed set of instructions for every task, you feed the ML algorithm large amounts of data, and it autonomously discovers patterns and rules to make predictions or decisions. The performance of the system improves as it gets exposed to more and more data.
+
+How Machine Learning Works
+
+The core idea is to train an algorithm (a set of steps) on a dataset to create a model.
+
+1.  Data Collection and Preparation: You gather and clean a large, high-quality dataset (e.g., thousands of labeled images, financial transaction records).
+2.  Model Training: The algorithm is fed this data. It iteratively adjusts its internal parameters (a process called "fitting") to minimize the difference between its predictions and the actual outcome. This is essentially the "learning" part.
+3.  Evaluation: The trained model is tested on new, unseen data to ensure it can generalize what it learned and make accurate predictions in the real world.
+4.  Prediction/Inference: Once deployed, the model uses the patterns it learned to process new input and output a prediction (e.g., classify an email as "spam," or recommend a product).
+
+Common Applications
+
+Machine Learning is everywhere in modern technology:
+
+ Recommendation Systems: Netflix suggesting movies, Amazon suggesting products.
+ Image and Facial Recognition: Automatically tagging photos on social media.
+ Natural Language Processing (NLP): Google Translate, virtual assistants like Siri and Alexa, and text generation (like large language models).
+ Fraud Detection: Banks flagging unusual or suspicious transactions.
+ Autonomous Vehicles: Self-driving cars using ML to interpret sensor data and make real-time driving decisions.
+
+
