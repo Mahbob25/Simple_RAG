@@ -1,5 +1,5 @@
 import os
-from langchain_community.document_loaders import TextLoader 
+from langchain_community.document_loaders import TextLoader, PyMuPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 import numpy as np
 from sentence_transformers import SentenceTransformer
@@ -19,15 +19,21 @@ def process_all_files(directory):
     all_documents = []
     text_dir = Path(directory).resolve()
 
-    #find all text files recursively
-    text_files = list(text_dir.glob("**/*.txt"))
-    print(f"Found {len(text_files)} text files to process")
+    # #find all text files recursively
+    # text_files = list(text_dir.glob("**/*.txt"))
+    # print(f"Found {len(text_files)} text files to process")
+
+    # Find all PDF files recursively
+    text_files = list(text_dir.glob("**/*.pdf"))
+    print(f"Found {len(text_files)} PDF files to process")
 
     for text_file in text_files:
         print(f"\nProcessing:{text_file.name}")
         try:
-            loader = TextLoader(str(text_file))
+            loader = PyMuPDFLoader(str(text_file))
             documents = loader.load()
+            if not documents:
+                print("⚠ No pages extracted from this PDF (may be scanned or protected).")
 
             #add source info to metadata
             for doc in documents:
@@ -113,7 +119,7 @@ class VectorStore:
         collection_name (str): Name of the ChromaDB collection.
         persist_directory (str): Directory to persist the ChromaDB database.
     """
-    def __init__(self, collection_name: str = "documents", persist_directory: str = r"D:\\RAG\\my_rag\\data\\vector_store"):
+    def __init__(self, collection_name: str = "documents", persist_directory: str = r"D:\\RAG\\my_rag\\data\\vector_store", load_existing: bool = False):
         """
         Initialize the VectorStore with ChromaDB client and collection.
         Args:
@@ -125,6 +131,13 @@ class VectorStore:
         self.client = None
         self.collection = None
         self._initialize_store()
+        
+        if load_existing:
+            self.client = chromadb.PersistentClient("data/vector_store")
+            self.collection = self.client.get_collection("documents")
+        else:
+            self.client = chromadb.PersistentClient("data/vector_store")
+            self.collection = self.client.get_or_create_collection("documents")
 
     def _initialize_store(self):
         """
@@ -356,30 +369,39 @@ rag_generator = RAGGenerator()
 
 
 
+### This fuction loads the RAG pipeline each time the page starts: bad
+# def init_pipeline():
+#     global rag_retriever, rag_generator
+    
+#     all_text_documents = process_all_files("data/")
+#     chunks = chucnk_data(all_text_documents)
+
+#     emb_manager = EmbeddingsManager()
+#     vectorstore = VectorStore()
+
+#     # Extract text content
+#     texts = [doc.page_content for doc in chunks]
+
+#     # Generate embeddings
+#     embeddings = emb_manager.generate_embeddings(texts)
+
+#     # Build vector store
+#     vectorstore.add_documents(chunks, embeddings)
+
+#     # Initialize components
+#     rag_retriever = RAGRetriever(vector_store=vectorstore, emb_manager=emb_manager)
+#     rag_generator = RAGGenerator()
+
+#     return rag_retriever, rag_generator
 
 def init_pipeline():
-    global rag_retriever, rag_generator
-    
-    all_text_documents = process_all_files("data/")
-    chunks = chucnk_data(all_text_documents)
-
     emb_manager = EmbeddingsManager()
-    vectorstore = VectorStore()
-
-    # Extract text content
-    texts = [doc.page_content for doc in chunks]
-
-    # Generate embeddings
-    embeddings = emb_manager.generate_embeddings(texts)
-
-    # Build vector store
-    vectorstore.add_documents(chunks, embeddings)
-
-    # Initialize components
+    vectorstore = VectorStore(load_existing=True)   # IMPORTANT
     rag_retriever = RAGRetriever(vector_store=vectorstore, emb_manager=emb_manager)
     rag_generator = RAGGenerator()
-
     return rag_retriever, rag_generator
+
+rag_retriever, rag_generator = init_pipeline()
 
 
 # Initialize once when module is imported
