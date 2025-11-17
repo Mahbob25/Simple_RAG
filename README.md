@@ -22,6 +22,9 @@ The system combines:
 The result is a modular, efficient, and transparent RAG solution capable of answering questions based strictly on provided documents — minimizing hallucinations and improving factual correctness.
 
 ---
+## 📊 RAG System Architecture
+
+![RAG Architecture](images/rag_diagram.png)
 
 ## 🏗️ **System Workflow**
 
