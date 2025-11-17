@@ -24,7 +24,7 @@ The result is a modular, efficient, and transparent RAG solution capable of answ
 ---
 ## 📊 RAG System Architecture
 
-![RAG Architecture](images/rag_diagram.png)
+![RAG Architecture](rag_diagram.png)
 
 ## 🏗️ **System Workflow**
 
