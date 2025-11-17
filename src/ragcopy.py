@@ -12,6 +12,7 @@ import os
 from dotenv import load_dotenv
 import google.generativeai as genai
 from pathlib import Path
+from sklearn.preprocessing import normalize
 
 
 # Read all docs 
@@ -49,7 +50,7 @@ def process_all_files(directory):
 
 
 
-def chucnk_data(documents, chunk_size=1000, chunk_overlap=200):
+def chucnk_data(documents, chunk_size=600, chunk_overlap=100):
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size = chunk_size,
         chunk_overlap=chunk_overlap,
@@ -76,7 +77,7 @@ class EmbeddingsManager:
     Args:
         model_name (str): Name of the embedding model to load.   
     """
-    def __init__(self, model_name: str = 'all-MiniLM-L6-v2'):
+    def __init__(self, model_name: str = 'BAAI/bge-small-en-v1.5'):
         self.model_name = model_name
         self.model = None
         self._load_model()
@@ -105,7 +106,7 @@ class EmbeddingsManager:
             raise ValueError("Model not loaded. Call load_model() first.")
         
         print(f"Generating embeddings for {len(texts)} texts...")
-        embeddings = self.model.encode(texts, show_progress_bar=True)
+        embeddings = normalize(self.model.encode(texts, show_progress_bar=True))
         print(f"Generated embeddings with shape: {embeddings.shape}")
         return embeddings
     
@@ -131,7 +132,7 @@ class VectorStore:
         self.client = None
         self.collection = None
         self._initialize_store()
-        
+
         if load_existing:
             self.client = chromadb.PersistentClient("data/vector_store")
             self.collection = self.client.get_collection("documents")
@@ -228,7 +229,7 @@ class RAGRetriever:
         self.emb_manager = emb_manager
 
 
-    def retrieve(self, query: str, top_k: int = 5, score_threshold: float = 0.0) -> List[Dict[str, Any]]:
+    def retrieve(self, query: str, top_k: int = 5, score_threshold = None) -> List[Dict[str, Any]]:
         """
         Retrieve top_k similar documents from the vector store based on the query.
 
@@ -265,8 +266,8 @@ class RAGRetriever:
                 ids = results['ids'][0]
 
                 for i, (doc_id, document, metadata, distance) in enumerate(zip(ids, document, metadata, distances)):
-                    similarity_score = 1 - distance  # Convert distance to similarity score
-                    if similarity_score >= score_threshold:
+                    similarity_score = 1 / (1 + distance)  # Convert distance to similarity score
+                    if score_threshold is None or similarity_score >= score_threshold:
                         retrieved_docs.append({
                             "id": doc_id,
                             "content": document,
@@ -327,18 +328,26 @@ class RAGGenerator:
             [f"Source {i+1}:\n{chunk['content']}" for i, chunk in enumerate(retrieved_chunks)]
         )
 
-        prompt = f"""
-You are an expert AI assistant.
+        prompt = f"""You are an AI assistant that answers questions strictly based on the provided context.
 
-Use ONLY the following retrieved context to answer the user's question.
-if you do not know the answer, politely apologize and tell the user that The information is not available in the provided Database.
-
-Context:
+=====================
+CONTEXT (retrieved documents):
 {context_text}
+=====================
 
-User Question: {question}
+INSTRUCTIONS:
+- ONLY use the information provided in the context.
+- If the answer is not explicitly supported by the context, you MUST say:
+  "The provided documents do not contain enough information to answer this question."
+- Do NOT use prior knowledge.
+- Do NOT guess or assume anything.
+- Cite the relevant chunks in your answer using this format: [source_file:chunk_index].
+- Keep the answer factual, concise, and well-structured.
 
-Give a clear, helpful answer. Do NOT hallucinate. If the answer is not in the context, politely apologize and tell the user that The information is not available in the provided Database you can only ask about python or machine learning.
+QUESTION:
+{question}
+
+Now provide the best possible answer using ONLY the context.
 """
         model = genai.GenerativeModel(self.model_name)
         response = model.generate_content(prompt)
@@ -409,11 +418,11 @@ rag_retriever, rag_generator = init_pipeline()
 
 
 def user_call(question: str):
-    
+
     retrieved_chunks = rag_retriever.retrieve(
         query=question,
-        top_k=5,
-        score_threshold=0.1
+        top_k=15,
+        score_threshold=None
     )
 
     sources = []
