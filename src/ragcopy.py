@@ -41,7 +41,6 @@ def process_all_files(directory):
     print(f"\nTotal documents loaded: {len(all_documents)}")
     return all_documents
 
-all_text_documents = process_all_files("D:/RAG/MY_RAG/data/")
 
 
 def chucnk_data(documents, chunk_size=1000, chunk_overlap=200):
@@ -61,7 +60,6 @@ def chucnk_data(documents, chunk_size=1000, chunk_overlap=200):
         print(f"content:{split_docs[0].page_content[:200]} ...")
         print(f"metadata: {split_docs[0].metadata}")
     return split_docs
-chuncks = chucnk_data(all_text_documents)
 
 
 
@@ -106,8 +104,6 @@ class EmbeddingsManager:
         return embeddings
     
 
-emb_manager = EmbeddingsManager()
-emb_manager
 
 class VectorStore:
     """
@@ -203,19 +199,6 @@ class VectorStore:
             print(f"Error adding documents to vector store: {e}")
             raise e
 
-vectorstore=VectorStore()
-vectorstore
-
-### convert chuncks to embeddings
-
-## Extract texts from chuncks
-texts =[doc.page_content for doc in chuncks]
-
-## Generate embeddings
-embeddings = emb_manager.generate_embeddings(texts)
-
-## Add documents and embeddings to vector store
-vectorstore.add_documents(chuncks, embeddings) 
 
 
 class RAGRetriever:
@@ -286,10 +269,6 @@ class RAGRetriever:
             print(f"Error during retrieval: {e}")
             raise e
 
-rag_retriever = RAGRetriever(vector_store=vectorstore, emb_manager=emb_manager)
-
-
-retrieved_chunks = rag_retriever.retrieve(query="What is machine learning and what is python?", top_k=5, score_threshold=0.1)
 
 
 
@@ -339,14 +318,14 @@ class RAGGenerator:
 You are an expert AI assistant.
 
 Use ONLY the following retrieved context to answer the user's question.
-if you do not know the answer, say "The information is not available in the provided documents."
+if you do not know the answer, politely apologize and tell the user that The information is not available in the provided Database.
 
 Context:
 {context_text}
 
 User Question: {question}
 
-Give a clear, helpful answer. Do NOT hallucinate. If the answer is not in the context, say "The information is not available in the provided documents."
+Give a clear, helpful answer. Do NOT hallucinate. If the answer is not in the context, politely apologize and tell the user that The information is not available in the provided Database you can only ask about python or machine learning.
 """
         model = genai.GenerativeModel(self.model_name)
         response = model.generate_content(prompt)
@@ -356,33 +335,78 @@ Give a clear, helpful answer. Do NOT hallucinate. If the answer is not in the co
 rag_generator = RAGGenerator()
         
 
+
+
+
+# print("=== RAG System ===")
+
+
+# while True:
+#     question = input("\nEnter your question (or type 'exit' to quit): ")
+
+#     if question.lower() in ["exit", "quit", "q"]:
+#         print("Goodbye!")
+#         break
+
+#     print("\nGenerating answer...\n")
+#     answer = user_call(question)
+
+#     print("=== Answer ===")
+#     print(answer)
+
+
+
+
+def init_pipeline():
+    global rag_retriever, rag_generator
+    
+    all_text_documents = process_all_files("data/")
+    chunks = chucnk_data(all_text_documents)
+
+    emb_manager = EmbeddingsManager()
+    vectorstore = VectorStore()
+
+    # Extract text content
+    texts = [doc.page_content for doc in chunks]
+
+    # Generate embeddings
+    embeddings = emb_manager.generate_embeddings(texts)
+
+    # Build vector store
+    vectorstore.add_documents(chunks, embeddings)
+
+    # Initialize components
+    rag_retriever = RAGRetriever(vector_store=vectorstore, emb_manager=emb_manager)
+    rag_generator = RAGGenerator()
+
+    return rag_retriever, rag_generator
+
+
+# Initialize once when module is imported
+rag_retriever, rag_generator = init_pipeline()
+
+
 def user_call(question: str):
-    retrieved_chunks = rag_retriever.retrieve(query=question, top_k=5, score_threshold=0.1)
+    
+    retrieved_chunks = rag_retriever.retrieve(
+        query=question,
+        top_k=5,
+        score_threshold=0.1
+    )
+
+    sources = []
+    for i, c in enumerate(retrieved_chunks):
+        source_string = f"{i+1}. {c['metadata'].get('source_file')} (chunk {c['metadata'].get('doc_index')})"
+        sources.append(source_string)
     
     answer = rag_generator.generate_answer(
-        question=question,
-        retrieved_chunks=retrieved_chunks
+    question=question,
+    retrieved_chunks=retrieved_chunks
     )
+
+    answer_with_source = f"{answer}\n\n\n\nSources: {sources}\n"
     if not answer or answer.strip() == "":
         raise ValueError("Unable to generate an answer.")
-    return answer
 
-
-print("=== RAG System ===")
-
-
-while True:
-    question = input("\nEnter your question (or type 'exit' to quit): ")
-
-    if question.lower() in ["exit", "quit", "q"]:
-        print("Goodbye!")
-        break
-
-    print("\nGenerating answer...\n")
-    answer = user_call(question)
-
-    print("=== Answer ===")
-    print(answer)
-
-
+    return answer_with_source 
 

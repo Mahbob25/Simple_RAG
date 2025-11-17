@@ -12,3 +12,9 @@ Langchain-community
 pypdf
 pymupdf
 faiss-cpu
+fastapi
+uvicorn
+python-multipart
+jinja2
+chromadb
+sentence-transformers
